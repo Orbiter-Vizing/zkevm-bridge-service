@@ -16,6 +16,7 @@ RUN cd /src && make build
 FROM alpine:3.16.0
 COPY --from=build /src/dist/zkevm-bridge /app/zkevm-bridge
 COPY --from=build /src/test/vectors /app/test/vectors
+RUN mkdir /app/log
 EXPOSE 8080
 EXPOSE 9090
 CMD ["/bin/sh", "-c", "/app/zkevm-bridge run"]

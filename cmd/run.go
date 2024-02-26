@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/0xPolygonHermez/zkevm-bridge-service/log"
 	"os"
 	"os/signal"
 
@@ -13,7 +14,6 @@ import (
 	"github.com/0xPolygonHermez/zkevm-bridge-service/synchronizer"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/gerror"
 	"github.com/0xPolygonHermez/zkevm-node/jsonrpc/client"
-	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/urfave/cli/v2"
 )
 
