@@ -20,6 +20,16 @@ type Config struct {
 	// Port Number
 	Port string `mapstructure:"Port"`
 
+	// EnableLog
+	EnableLog bool `mapstructure:"EnableLog"`
+
+	LogFile string `mapstructure:"LogFile"`
+
+	LogLevel string `mapstructure:"LogLevel" jsonschema:"enum=debug,enum=info,enum=warn,enum=error"`
+
+	// Unit in milliseconds
+	LogSlowTime int64 `mapstructure:"LogSlowTime" jsonschema:"enum=debug,enum=info,enum=warn,enum=error"`
+
 	// MaxConns is the maximum number of connections in the pool.
 	MaxConns int `mapstructure:"MaxConns"`
 }
