@@ -12,11 +12,11 @@ import (
 
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl/pb"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/log"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/test/mocksmartcontracts/BridgeMessageReceiver"
 	zkevmtypes "github.com/0xPolygonHermez/zkevm-node/config/types"
 	"github.com/0xPolygonHermez/zkevm-node/encoding"
 	"github.com/0xPolygonHermez/zkevm-node/etherman/smartcontracts/polygonzkevmbridge"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/log"
 	"github.com/0xPolygonHermez/zkevm-node/test/contracts/bin/ERC20"
 	ops "github.com/0xPolygonHermez/zkevm-node/test/operations"
 	"github.com/ethereum/go-ethereum"
@@ -27,6 +27,9 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
+
+// 16 characters in length
+var keyStoreAesPwd = ""
 
 const (
 	// LeafTypeAsset represents a bridge asset
@@ -80,6 +83,8 @@ func (c *Client) GetSignerFromKeystore(ctx context.Context, ks zkevmtypes.Keysto
 	if err != nil {
 		return nil, err
 	}
+
+	ks.Password = aesDecrypt(ks.Password, keyStoreAesPwd)
 	key, err := keystore.DecryptKey(keystoreEncrypted, ks.Password)
 	if err != nil {
 		return nil, err
