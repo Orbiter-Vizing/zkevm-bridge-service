@@ -221,8 +221,8 @@ func (tm *PushTxManager) scanClaimTxs(ctx context.Context) error {
 		claim := &etherman.Claim{
 			TxHash:             common.HexToHash(targetHash),
 			OriginalNetwork:    uint(origNetID),
-			OriginalAddress:    common.HexToAddress(retRes.Result.Sender),
-			DestinationAddress: common.HexToAddress(retRes.Result.Sender),
+			OriginalAddress:    mTx.OriginalAddress,
+			DestinationAddress: mTx.OriginalAddress,
 			Amount:             mTx.Amount,
 			NetworkID:          convertChainID(uint(destNetID)),
 			Index:              mTx.DepositCount,

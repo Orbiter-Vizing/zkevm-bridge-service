@@ -602,7 +602,7 @@ func (p *PostgresStorage) UpdatePushDepositsBlock(ctx context.Context, recordID,
 }
 
 func (p *PostgresStorage) GetPendingPushTxsStatus(ctx context.Context, chainID uint, limit uint, offset uint, dbTx pgx.Tx) ([]*etherman.Deposit, error) {
-	const getDepositsSQL = "SELECT id,deposit_cnt,amount,tx_hash,ready_for_claim FROM sync.deposit " +
+	const getDepositsSQL = "SELECT id,deposit_cnt,amount,tx_hash,ready_for_claim,orig_addr FROM sync.deposit " +
 		"WHERE network_id = $1 and dest_net>0 and ready_for_claim=false and block_id>0 ORDER BY id LIMIT $2 OFFSET $3"
 	rows, err := p.getExecQuerier(dbTx).Query(ctx, getDepositsSQL, chainID, limit, offset)
 	if err != nil {
@@ -614,7 +614,7 @@ func (p *PostgresStorage) GetPendingPushTxsStatus(ctx context.Context, chainID u
 	for rows.Next() {
 		var deposit etherman.Deposit
 		var amount string
-		err = rows.Scan(&deposit.Id, &deposit.DepositCount, &amount, &deposit.TxHash, &deposit.ReadyForClaim)
+		err = rows.Scan(&deposit.Id, &deposit.DepositCount, &amount, &deposit.TxHash, &deposit.ReadyForClaim, &deposit.OriginalAddress)
 		if err != nil {
 			return nil, err
 		}
