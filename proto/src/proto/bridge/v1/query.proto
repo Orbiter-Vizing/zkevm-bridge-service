@@ -52,6 +52,23 @@ service BridgeService {
             get: "/tokenwrapped"
         };
     }
+
+    rpc PushBridge(PushBridgeRequest) returns (PushBridgeResponse) {
+        option (google.api.http) = {
+            post: "/push-bridge"
+            body : "*"
+        };
+    }
+}
+
+// PushBridge message
+message PushBridgeRequest {
+    uint32 orig_net = 1;
+    string orig_addr = 2;
+    uint32 dest_net = 3;
+    string dest_addr = 4;
+    string tx_hash = 5;
+    string amount = 6;
 }
 
 // TokenWrapped message
@@ -74,7 +91,7 @@ message Deposit {
     uint32 dest_net = 5;
     string dest_addr = 6;
     uint64 block_num = 7;
-    uint64 deposit_cnt = 8;
+    int64  deposit_cnt = 8;
     uint32 network_id = 9;
     string tx_hash = 10;
     string claim_tx_hash = 11;
@@ -84,7 +101,7 @@ message Deposit {
 
 // Claim message
 message Claim {
-    uint64 index = 1;
+    int64  index = 1;
     uint32 orig_net = 2;
     string orig_addr = 3;
     string amount = 4;
@@ -113,7 +130,7 @@ message GetBridgesRequest {
 
 message GetProofRequest {
     uint32 net_id = 1;
-    uint64 deposit_cnt = 2;
+    int64  deposit_cnt = 2;
 }
 
 message GetTokenWrappedRequest {
@@ -123,7 +140,7 @@ message GetTokenWrappedRequest {
 
 message GetBridgeRequest {
     uint32 net_id = 1;
-    uint64 deposit_cnt = 2;
+    int64  deposit_cnt = 2;
 }
 
 message GetClaimsRequest {
@@ -136,6 +153,10 @@ message GetClaimsRequest {
 
 message CheckAPIResponse {
     string api = 1;
+}
+
+message PushBridgeResponse {
+    int64 status = 1;
 }
 
 message GetBridgesResponse {

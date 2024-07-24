@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"google.golang.org/grpc/metadata"
 	"net"
 	"net/http"
 	"os"
@@ -137,7 +138,17 @@ func runRestServer(ctx context.Context, grpcPort, httpPort string) error {
 			DiscardUnknown: true,
 		},
 	})
-	mux := runtime.NewServeMux(muxJSONOpt, muxHealthOpt)
+	muxHeaderOpt := runtime.WithMetadata(func(ctx context.Context, req *http.Request) metadata.MD {
+		headers := []string{"Origin"}
+		md := make(metadata.MD)
+		for _, header := range headers {
+			if val := req.Header.Get(header); val != "" {
+				md.Append(header, val)
+			}
+		}
+		return md
+	})
+	mux := runtime.NewServeMux(muxJSONOpt, muxHealthOpt, muxHeaderOpt)
 
 	if err := pb.RegisterBridgeServiceHandler(ctx, mux, conn); err != nil {
 		return err

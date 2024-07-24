@@ -1,5 +1,5 @@
 # CONTAINER FOR BUILDING BINARY
-FROM golang:1.19 AS build
+FROM golang:1.21 AS build
 
 ENV CGO_ENABLED=0
 # INSTALL DEPENDENCIES
@@ -13,7 +13,7 @@ RUN cd /src/db && packr2
 RUN cd /src && make build
 
 # CONTAINER FOR RUNNING BINARY
-FROM alpine:3.16.0
+FROM alpine:3.18
 COPY --from=build /src/dist/zkevm-bridge /app/zkevm-bridge
 COPY --from=build /src/test/vectors /app/test/vectors
 RUN mkdir /app/log

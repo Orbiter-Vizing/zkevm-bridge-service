@@ -1,4 +1,4 @@
-package claimtxman
+package pushtxman
 
 import (
 	"context"
@@ -20,6 +20,13 @@ type storageInterface interface {
 	Rollback(ctx context.Context, dbTx pgx.Tx) error
 	BeginDBTransaction(ctx context.Context) (pgx.Tx, error)
 	Commit(ctx context.Context, dbTx pgx.Tx) error
+	GetPendingPushDeposits(context.Context, uint, uint, uint, pgx.Tx) ([]*etherman.Deposit, error)
+	UpdatePushDepositsBlock(context.Context, uint64, uint64, pgx.Tx) error
+	GetPendingPushTxsStatus(context.Context, uint, uint, uint, pgx.Tx) ([]*etherman.Deposit, error)
+	AddClaim(ctx context.Context, claim *etherman.Claim, dbTx pgx.Tx) error
+	UpdatePushDepositsStatus(context.Context, uint, uint, string, int, pgx.Tx) error
+	GetMinDepositCount(ctx context.Context, networkID uint, dbTx pgx.Tx) (int, error)
+	DelPushDeposit(ctx context.Context, depositID uint64, dbTx pgx.Tx) error
 }
 
 type bridgeServiceInterface interface {

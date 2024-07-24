@@ -40,7 +40,7 @@ func (s MonitoredTxStatus) String() string {
 // plus information to monitor if the transactions was sent successfully
 type MonitoredTx struct {
 	// DepositID is the tx identifier controller by the caller
-	DepositID uint
+	DepositID int
 
 	// From is a sender of the tx, used to identify which private key should be used to sing the tx
 	From common.Address

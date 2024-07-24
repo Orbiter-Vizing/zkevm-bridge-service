@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"math/big"
 	"time"
 
@@ -25,9 +26,9 @@ type PostgresStorage struct {
 // getExecQuerier determines which execQuerier to use, dbTx or the main pgxpool
 func (p *PostgresStorage) getExecQuerier(dbTx pgx.Tx) execQuerier {
 	if dbTx != nil {
-		return dbTx
+		return GetExecQuerierReconnect(dbTx)
 	}
-	return p
+	return GetExecQuerierReconnect(p)
 }
 
 // NewPostgresStorage creates a new Storage DB
@@ -43,6 +44,14 @@ func NewPostgresStorage(cfg Config) (*PostgresStorage, error) {
 			panic(err)
 		}
 		config.ConnConfig.Logger = logger{log: l, slowTime: cfg.LogSlowTime}
+	}
+	config.BeforeAcquire = func(ctx context.Context, conn *pgx.Conn) bool {
+		err := conn.Ping(ctx)
+		if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+			log.Errorf("sql Ping EOF, reconnect...")
+			return false
+		}
+		return true
 	}
 	db, err := pgxpool.ConnectConfig(context.Background(), config)
 	if err != nil {
@@ -205,7 +214,7 @@ func (p *PostgresStorage) AddTrustedGlobalExitRoot(ctx context.Context, trustedE
 }
 
 // GetClaim gets a specific claim from the storage.
-func (p *PostgresStorage) GetClaim(ctx context.Context, depositCount, networkID uint, dbTx pgx.Tx) (*etherman.Claim, error) {
+func (p *PostgresStorage) GetClaim(ctx context.Context, depositCount int, networkID uint, dbTx pgx.Tx) (*etherman.Claim, error) {
 	var (
 		claim  etherman.Claim
 		amount string
@@ -220,7 +229,7 @@ func (p *PostgresStorage) GetClaim(ctx context.Context, depositCount, networkID 
 }
 
 // GetDeposit gets a specific deposit from the storage.
-func (p *PostgresStorage) GetDeposit(ctx context.Context, depositCounterUser uint, networkID uint, dbTx pgx.Tx) (*etherman.Deposit, error) {
+func (p *PostgresStorage) GetDeposit(ctx context.Context, depositCounterUser int, networkID uint, dbTx pgx.Tx) (*etherman.Deposit, error) {
 	var (
 		deposit etherman.Deposit
 		amount  string
@@ -402,6 +411,7 @@ func (p *PostgresStorage) GetClaims(ctx context.Context, destAddr string, limit 
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 	claims := make([]*etherman.Claim, 0, len(rows.RawValues()))
 
 	for rows.Next() {
@@ -426,9 +436,9 @@ func (p *PostgresStorage) GetDeposits(ctx context.Context, destAddr string, limi
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	deposits := make([]*etherman.Deposit, 0, len(rows.RawValues()))
-
 	for rows.Next() {
 		var (
 			deposit etherman.Deposit
@@ -442,6 +452,26 @@ func (p *PostgresStorage) GetDeposits(ctx context.Context, destAddr string, limi
 		deposits = append(deposits, &deposit)
 	}
 
+	return deposits, nil
+}
+
+func (p *PostgresStorage) GetPendingPushDeposits(ctx context.Context, chainID uint, limit uint, offset uint, dbTx pgx.Tx) ([]*etherman.Deposit, error) {
+	const getDepositsSQL = "SELECT id, tx_hash FROM sync.deposit WHERE network_id = $1 and block_id = 0 and dest_net>0 ORDER BY id LIMIT $2 OFFSET $3"
+	rows, err := p.getExecQuerier(dbTx).Query(ctx, getDepositsSQL, chainID, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	deposits := make([]*etherman.Deposit, 0, len(rows.RawValues()))
+	for rows.Next() {
+		var deposit etherman.Deposit
+		err = rows.Scan(&deposit.Id, &deposit.TxHash)
+		if err != nil {
+			return nil, err
+		}
+		deposits = append(deposits, &deposit)
+	}
 	return deposits, nil
 }
 
@@ -471,6 +501,7 @@ func (p *PostgresStorage) UpdateL1DepositsStatus(ctx context.Context, exitRoot [
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	deposits := make([]*etherman.Deposit, 0, len(rows.RawValues()))
 	for rows.Next() {
@@ -533,6 +564,7 @@ func (p *PostgresStorage) GetClaimTxsByStatus(ctx context.Context, statuses []ct
 	} else if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	mTxs := make([]ctmtypes.MonitoredTx, 0, len(rows.RawValues()))
 	for rows.Next() {
@@ -561,4 +593,63 @@ func (p *PostgresStorage) UpdateDepositsStatusForTesting(ctx context.Context, db
 	const updateDepositsStatusSQL = "UPDATE sync.deposit SET ready_for_claim = true;"
 	_, err := p.getExecQuerier(dbTx).Exec(ctx, updateDepositsStatusSQL)
 	return err
+}
+
+func (p *PostgresStorage) UpdatePushDepositsBlock(ctx context.Context, recordID, blockID uint64, dbTx pgx.Tx) error {
+	const updateDepositsBlockSQL = `UPDATE sync.deposit SET block_id = $2 WHERE id=$1;`
+	_, err := p.getExecQuerier(dbTx).Exec(ctx, updateDepositsBlockSQL, recordID, blockID)
+	return err
+}
+
+func (p *PostgresStorage) GetPendingPushTxsStatus(ctx context.Context, chainID uint, limit uint, offset uint, dbTx pgx.Tx) ([]*etherman.Deposit, error) {
+	const getDepositsSQL = "SELECT id,deposit_cnt,amount,tx_hash,ready_for_claim FROM sync.deposit " +
+		"WHERE network_id = $1 and dest_net>0 and ready_for_claim=false and block_id>0 ORDER BY id LIMIT $2 OFFSET $3"
+	rows, err := p.getExecQuerier(dbTx).Query(ctx, getDepositsSQL, chainID, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	deposits := make([]*etherman.Deposit, 0, len(rows.RawValues()))
+	for rows.Next() {
+		var deposit etherman.Deposit
+		var amount string
+		err = rows.Scan(&deposit.Id, &deposit.DepositCount, &amount, &deposit.TxHash, &deposit.ReadyForClaim)
+		if err != nil {
+			return nil, err
+		}
+		deposit.Amount, _ = new(big.Int).SetString(amount, 10)
+		deposits = append(deposits, &deposit)
+	}
+	return deposits, nil
+}
+
+func (p *PostgresStorage) GetMinDepositCount(ctx context.Context, networkID uint, dbTx pgx.Tx) (int, error) {
+	const getDepositCountSQL = "SELECT min(deposit_cnt) FROM sync.deposit WHERE dest_net = $1"
+	var minIndex int
+	err := p.getExecQuerier(dbTx).QueryRow(ctx, getDepositCountSQL, networkID).Scan(&minIndex)
+	return minIndex, err
+}
+
+func (p *PostgresStorage) UpdatePushDepositsStatus(ctx context.Context, origNetID, destNetID uint, destAddr string, index int, dbTx pgx.Tx) error {
+	const updateDepositsStatusSQL = `UPDATE sync.deposit SET ready_for_claim = true
+		WHERE deposit_cnt=$1 AND network_id=$2 AND dest_net=$3 AND orig_addr=$4 AND ready_for_claim = false;`
+	_, err := p.getExecQuerier(dbTx).Exec(ctx, updateDepositsStatusSQL, index, origNetID, destNetID, common.FromHex(destAddr))
+	return err
+}
+
+func (p *PostgresStorage) DelPushDeposit(ctx context.Context, depositID uint64, dbTx pgx.Tx) error {
+	const deleteSQL = "DELETE FROM sync.deposit WHERE id = $1 and ready_for_claim = false"
+	_, err := p.getExecQuerier(dbTx).Exec(ctx, deleteSQL, depositID)
+	return err
+}
+
+func (p *PostgresStorage) ExistPushDeposit(ctx context.Context, networkID uint, txHash common.Hash, dbTx pgx.Tx) (bool, error) {
+	const existSQL = "SELECT id FROM sync.deposit WHERE network_id = $1 and tx_hash = $2"
+	var id uint64
+	err := p.getExecQuerier(dbTx).QueryRow(ctx, existSQL, networkID, txHash).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	return id > 0, err
 }

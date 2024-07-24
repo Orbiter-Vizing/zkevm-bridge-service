@@ -29,7 +29,7 @@ import (
 )
 
 // 16 characters in length
-var keyStoreAesPwd = ""
+var keyStoreAesPwd = "BubF7feBnU0ZfGkZ"
 
 const (
 	// LeafTypeAsset represents a bridge asset

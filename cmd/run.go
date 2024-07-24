@@ -2,8 +2,10 @@ package main
 
 import (
 	"github.com/0xPolygonHermez/zkevm-bridge-service/log"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/pushtxman"
 	"os"
 	"os/signal"
+	"strings"
 
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/claimtxman"
@@ -80,7 +82,9 @@ func start(ctx *cli.Context) error {
 		log.Error(err)
 		return err
 	}
-	bridgeService := server.NewBridgeService(c.BridgeServer, c.BridgeController.Height, networkIDs, apiStorage)
+	chPush := make(map[uint]chan *etherman.Deposit)
+	depositMgr := pushtxman.NewDepositManager(c.PushTxManager, storage)
+	bridgeService := server.NewBridgeService(c.BridgeServer, c.BridgeController.Height, networkIDs, chPush, apiStorage, depositMgr)
 	err = server.RunServer(c.BridgeServer, bridgeService)
 	if err != nil {
 		log.Error(err)
@@ -121,6 +125,21 @@ func start(ctx *cli.Context) error {
 				}
 			}
 		}()
+	}
+
+	if c.PushTxManager.Enabled {
+		go depositMgr.Start()
+		c.PushTxManager.FullChainAPI = strings.Trim(c.PushTxManager.FullChainAPI, "/\\") + "/"
+		chClaim := make(map[uint]chan *etherman.Claim)
+		for i := 0; i < len(c.PushTxManager.NodeRpcs); i++ {
+			pushTxManager, err := pushtxman.NewPushTxManager(c.PushTxManager, i, chPush, chClaim, depositMgr, storage)
+			if err != nil {
+				log.Fatalf("error creating push tx manager for %s. Error: %v", c.PushTxManager.NodeRpcs[i].Name, err)
+			}
+			go pushTxManager.Start()
+		}
+	} else {
+		log.Warn("PushTxManager not configured")
 	}
 
 	// Wait for an in interrupt.

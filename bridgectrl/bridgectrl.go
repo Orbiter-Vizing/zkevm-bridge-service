@@ -56,7 +56,7 @@ func (bt *BridgeController) AddDeposit(deposit *etherman.Deposit, depositID uint
 	if err != nil {
 		return err
 	}
-	return bt.exitTrees[tID].addLeaf(context.TODO(), depositID, leaf, deposit.DepositCount, dbTx)
+	return bt.exitTrees[tID].addLeaf(context.TODO(), depositID, leaf, uint(deposit.DepositCount), dbTx)
 }
 
 // ReorgMT reorg the specific merkle tree.

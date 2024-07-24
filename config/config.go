@@ -3,6 +3,7 @@ package config
 import (
 	"bytes"
 	"errors"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/pushtxman"
 	"path/filepath"
 	"strings"
 
@@ -10,9 +11,9 @@ import (
 	"github.com/0xPolygonHermez/zkevm-bridge-service/claimtxman"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/db"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/log"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/server"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/synchronizer"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/log"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
 )
@@ -26,6 +27,7 @@ type Config struct {
 	Synchronizer     synchronizer.Config
 	BridgeController bridgectrl.Config
 	BridgeServer     server.Config
+	PushTxManager    pushtxman.Config
 	NetworkConfig
 }
 

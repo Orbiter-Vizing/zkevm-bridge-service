@@ -22,11 +22,11 @@ func NewLogger(cfg Config) (*Logger, error) {
 	encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 	encoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 	lumberJackLogger := &lumberjack.Logger{
-		Filename:   cfg.LogFile, // 日志文件路径
-		MaxSize:    10,          // 每个日志文件的最大大小（以MB为单位）
-		MaxBackups: 3,           // 保留的旧日志文件的最大数量
-		MaxAge:     7,           // 最多保留的天数
-		Compress:   false,       // 是否压缩旧日志文件
+		Filename:   cfg.LogFile,
+		MaxSize:    10,
+		MaxBackups: 3,
+		MaxAge:     7,
+		Compress:   false,
 	}
 	core := zapcore.NewCore(
 		zapcore.NewConsoleEncoder(encoderConfig),

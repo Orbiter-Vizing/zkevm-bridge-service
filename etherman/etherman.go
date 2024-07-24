@@ -7,9 +7,9 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/0xPolygonHermez/zkevm-bridge-service/log"
 	"github.com/0xPolygonHermez/zkevm-node/etherman/smartcontracts/polygonzkevmbridge"
 	"github.com/0xPolygonHermez/zkevm-node/etherman/smartcontracts/polygonzkevmglobalexitroot"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/log"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -227,7 +227,7 @@ func (etherMan *Client) depositEvent(ctx context.Context, vLog types.Log, blocks
 	deposit.DestinationAddress = d.DestinationAddress
 	deposit.DestinationNetwork = uint(d.DestinationNetwork)
 	deposit.OriginalAddress = d.OriginAddress
-	deposit.DepositCount = uint(d.DepositCount)
+	deposit.DepositCount = int(d.DepositCount)
 	deposit.TxHash = vLog.TxHash
 	deposit.Metadata = d.Metadata
 	deposit.LeafType = d.LeafType
@@ -263,7 +263,7 @@ func (etherMan *Client) claimEvent(ctx context.Context, vLog types.Log, blocks *
 	var claim Claim
 	claim.Amount = c.Amount
 	claim.DestinationAddress = c.DestinationAddress
-	claim.Index = uint(c.Index)
+	claim.Index = int(c.Index)
 	claim.OriginalNetwork = uint(c.OriginNetwork)
 	claim.OriginalAddress = c.OriginAddress
 	claim.BlockNumber = vLog.BlockNumber

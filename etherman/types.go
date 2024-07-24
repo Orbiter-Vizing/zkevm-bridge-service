@@ -7,6 +7,11 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+const VIZING_TESTNET = 28516
+const VIZING_MAINNET = 28518
+const ETHEREUM_TESTNET = 11155111
+const ETHEREUM_MAINNET = 1
+
 // Block struct
 type Block struct {
 	ID              uint64
@@ -31,13 +36,14 @@ type GlobalExitRoot struct {
 
 // Deposit struct
 type Deposit struct {
+	Id                 uint64
 	LeafType           uint8
 	OriginalNetwork    uint
 	OriginalAddress    common.Address
 	Amount             *big.Int
 	DestinationNetwork uint
 	DestinationAddress common.Address
-	DepositCount       uint
+	DepositCount       int
 	BlockID            uint64
 	BlockNumber        uint64
 	NetworkID          uint
@@ -49,7 +55,7 @@ type Deposit struct {
 
 // Claim struct
 type Claim struct {
-	Index              uint
+	Index              int
 	OriginalNetwork    uint
 	OriginalAddress    common.Address
 	Amount             *big.Int

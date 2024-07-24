@@ -4,6 +4,10 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/log"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/pushtxman"
+	"google.golang.org/grpc/metadata"
+	"math/big"
 
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl/pb"
@@ -16,17 +20,21 @@ import (
 
 type bridgeService struct {
 	storage          bridgeServiceStorage
+	depositMgr       *pushtxman.DepositManager
+	cfg              Config
 	networkIDs       map[uint]uint8
 	height           uint8
 	defaultPageLimit uint32
 	maxPageLimit     uint32
 	version          string
 	cache            *lru.Cache[string, [][]byte]
+	chPush 			 map[uint]chan *etherman.Deposit
 	pb.UnimplementedBridgeServiceServer
 }
 
 // NewBridgeService creates new bridge service.
-func NewBridgeService(cfg Config, height uint8, networks []uint, storage interface{}) *bridgeService {
+func NewBridgeService(cfg Config, height uint8, networks []uint, chPush map[uint]chan *etherman.Deposit,
+	storage interface{}, depositMgr *pushtxman.DepositManager) *bridgeService {
 	var networkIDs = make(map[uint]uint8)
 	for i, network := range networks {
 		networkIDs[network] = uint8(i)
@@ -43,6 +51,9 @@ func NewBridgeService(cfg Config, height uint8, networks []uint, storage interfa
 		maxPageLimit:     cfg.MaxPageLimit,
 		version:          cfg.BridgeVersion,
 		cache:            cache,
+		chPush:           chPush,
+		depositMgr:       depositMgr,
+		cfg:              cfg,
 	}
 }
 
@@ -71,7 +82,7 @@ func (s *bridgeService) getNode(ctx context.Context, parentHash [bridgectrl.KeyL
 }
 
 // getProof returns the merkle proof for a given index and root.
-func (s *bridgeService) getProof(index uint, root [bridgectrl.KeyLen]byte, dbTx pgx.Tx) ([][bridgectrl.KeyLen]byte, error) {
+func (s *bridgeService) getProof(index int, root [bridgectrl.KeyLen]byte, dbTx pgx.Tx) ([][bridgectrl.KeyLen]byte, error) {
 	var siblings [][bridgectrl.KeyLen]byte
 
 	cur := root
@@ -122,7 +133,7 @@ func (s *bridgeService) getProof(index uint, root [bridgectrl.KeyLen]byte, dbTx 
 }
 
 // GetClaimProof returns the merkle proof to claim the given deposit.
-func (s *bridgeService) GetClaimProof(depositCnt, networkID uint, dbTx pgx.Tx) (*etherman.GlobalExitRoot, [][bridgectrl.KeyLen]byte, error) {
+func (s *bridgeService) GetClaimProof(depositCnt int, networkID uint, dbTx pgx.Tx) (*etherman.GlobalExitRoot, [][bridgectrl.KeyLen]byte, error) {
 	ctx := context.Background()
 
 	if dbTx == nil { // if the call comes from the rest API
@@ -155,7 +166,7 @@ func (s *bridgeService) GetClaimProof(depositCnt, networkID uint, dbTx pgx.Tx) (
 }
 
 // GetDepositStatus returns deposit with ready_for_claim status.
-func (s *bridgeService) GetDepositStatus(ctx context.Context, depositCount uint, destNetworkID uint) (string, error) {
+func (s *bridgeService) GetDepositStatus(ctx context.Context, depositCount int, destNetworkID uint) (string, error) {
 	var (
 		claimTxHash string
 	)
@@ -213,7 +224,7 @@ func (s *bridgeService) GetBridges(ctx context.Context, req *pb.GetBridgesReques
 				DestNet:       uint32(deposit.DestinationNetwork),
 				DestAddr:      deposit.DestinationAddress.Hex(),
 				BlockNum:      deposit.BlockNumber,
-				DepositCnt:    uint64(deposit.DepositCount),
+				DepositCnt:    int64(deposit.DepositCount),
 				NetworkId:     uint32(deposit.NetworkID),
 				TxHash:        deposit.TxHash.String(),
 				ClaimTxHash:   claimTxHash,
@@ -251,7 +262,7 @@ func (s *bridgeService) GetClaims(ctx context.Context, req *pb.GetClaimsRequest)
 	var pbClaims []*pb.Claim
 	for _, claim := range claims {
 		pbClaims = append(pbClaims, &pb.Claim{
-			Index:     uint64(claim.Index),
+			Index:     int64(claim.Index),
 			OrigNet:   uint32(claim.OriginalNetwork),
 			OrigAddr:  claim.OriginalAddress.Hex(),
 			Amount:    claim.Amount.String(),
@@ -271,7 +282,7 @@ func (s *bridgeService) GetClaims(ctx context.Context, req *pb.GetClaimsRequest)
 // GetProof returns the merkle proof for the given deposit.
 // Bridge rest API endpoint
 func (s *bridgeService) GetProof(ctx context.Context, req *pb.GetProofRequest) (*pb.GetProofResponse, error) {
-	globalExitRoot, merkleProof, err := s.GetClaimProof(uint(req.DepositCnt), uint(req.NetId), nil)
+	globalExitRoot, merkleProof, err := s.GetClaimProof(int(req.DepositCnt), uint(req.NetId), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -292,12 +303,12 @@ func (s *bridgeService) GetProof(ctx context.Context, req *pb.GetProofRequest) (
 // GetBridge returns the bridge  with status whether it is able to send a claim transaction or not.
 // Bridge rest API endpoint
 func (s *bridgeService) GetBridge(ctx context.Context, req *pb.GetBridgeRequest) (*pb.GetBridgeResponse, error) {
-	deposit, err := s.storage.GetDeposit(ctx, uint(req.DepositCnt), uint(req.NetId), nil)
+	deposit, err := s.storage.GetDeposit(ctx, int(req.DepositCnt), uint(req.NetId), nil)
 	if err != nil {
 		return nil, err
 	}
 
-	claimTxHash, err := s.GetDepositStatus(ctx, uint(req.DepositCnt), deposit.DestinationNetwork)
+	claimTxHash, err := s.GetDepositStatus(ctx, int(req.DepositCnt), deposit.DestinationNetwork)
 	if err != nil {
 		return nil, err
 	}
@@ -311,7 +322,7 @@ func (s *bridgeService) GetBridge(ctx context.Context, req *pb.GetBridgeRequest)
 			DestNet:       uint32(deposit.DestinationNetwork),
 			DestAddr:      deposit.DestinationAddress.Hex(),
 			BlockNum:      deposit.BlockNumber,
-			DepositCnt:    uint64(deposit.DepositCount),
+			DepositCnt:    int64(deposit.DepositCount),
 			NetworkId:     uint32(deposit.NetworkID),
 			TxHash:        deposit.TxHash.String(),
 			ClaimTxHash:   claimTxHash,
@@ -338,5 +349,84 @@ func (s *bridgeService) GetTokenWrapped(ctx context.Context, req *pb.GetTokenWra
 			Symbol:            tokenWrapped.Symbol,
 			Decimals:          uint32(tokenWrapped.Decimals),
 		},
+	}, nil
+}
+
+func (s *bridgeService) PushBridge(ctx context.Context, req *pb.PushBridgeRequest) (*pb.PushBridgeResponse, error) {
+	if s.cfg.EnableUIHostMatch {
+		isMatch := false
+		if md, ok := metadata.FromIncomingContext(ctx); ok {
+			values := md.Get("Origin")
+			if len(values) > 0 && values[0] == s.cfg.BridgeUIHost {
+				isMatch = true
+			}
+		}
+		if !isMatch {
+			log.Infof("request domain mismatch, expected to be %s", s.cfg.BridgeUIHost)
+			return &pb.PushBridgeResponse{ Status: -6 }, nil
+		}
+	}
+
+	deposit := &etherman.Deposit{
+		OriginalNetwork: uint(req.OrigNet),
+		OriginalAddress: common.HexToAddress(req.OrigAddr),
+		DestinationNetwork: uint(req.DestNet),
+		DestinationAddress: common.HexToAddress(req.DestAddr),
+		NetworkID: uint(req.OrigNet),
+		TxHash: common.HexToHash(req.TxHash),
+		Metadata: []byte(""),
+	}
+	if req.OrigNet == etherman.VIZING_TESTNET || req.OrigNet == etherman.VIZING_MAINNET {
+		deposit.OriginalNetwork = 1
+		deposit.NetworkID = 1
+	}
+	if req.DestNet == etherman.VIZING_TESTNET || req.DestNet == etherman.VIZING_MAINNET {
+		deposit.DestinationNetwork = 1
+	}
+	if req.OrigNet == etherman.ETHEREUM_TESTNET || req.OrigNet == etherman.ETHEREUM_MAINNET {
+		deposit.OriginalNetwork = 0
+		deposit.NetworkID = 0
+	}
+	if req.DestNet == etherman.ETHEREUM_TESTNET || req.DestNet == etherman.ETHEREUM_MAINNET {
+		deposit.DestinationNetwork = 0
+	}
+	if deposit.OriginalNetwork < 1 || deposit.DestinationNetwork < 1 {
+		return &pb.PushBridgeResponse{ Status: -1 }, nil
+	}
+	isExist := s.depositMgr.IsExistDeposit(ctx, deposit.NetworkID, deposit.TxHash.Hex())
+	if isExist {
+		log.Errorf("network(%d) push tx(%s) deposit already exist", deposit.NetworkID, deposit.TxHash)
+		return &pb.PushBridgeResponse{ Status: -3 }, nil
+	}
+	s.depositMgr.AddExistDeposit(ctx, deposit.NetworkID, deposit.TxHash.Hex())
+	isExist, err := s.storage.ExistPushDeposit(ctx, deposit.NetworkID, deposit.TxHash, nil)
+	if err != nil {
+		s.depositMgr.DelExistDeposit(ctx, deposit.NetworkID, deposit.TxHash.Hex())
+		return &pb.PushBridgeResponse{ Status: -2 }, err
+	}
+	if isExist {
+		log.Errorf("network(%d) push tx(%s) deposit already exist", deposit.NetworkID, deposit.TxHash)
+		return &pb.PushBridgeResponse{ Status: -3 }, nil
+	}
+	minIndex, err := s.depositMgr.GetDepositCnt(ctx, deposit.DestinationNetwork)
+	if err != nil {
+		s.depositMgr.DelExistDeposit(ctx, deposit.NetworkID, deposit.TxHash.Hex())
+		return &pb.PushBridgeResponse{ Status: -4 }, err
+	}
+	deposit.DepositCount = minIndex
+	if amount, ok := new(big.Int).SetString(req.Amount, 10); ok {
+		deposit.Amount = amount
+	}
+	id, err := s.storage.AddDeposit(ctx, deposit, nil)
+	if err != nil {
+		s.depositMgr.DelExistDeposit(ctx, deposit.NetworkID, deposit.TxHash.Hex())
+		log.Errorf("[PushBridge] network(%d) push tx(%s), add deposit err: %s", deposit.NetworkID, deposit.TxHash, err.Error())
+		return &pb.PushBridgeResponse{ Status: -5 }, err
+	}
+	log.Infof("deposit id: %d", id)
+	deposit.Id = id
+	s.chPush[deposit.NetworkID] <- deposit
+	return &pb.PushBridgeResponse{
+		Status: 0,
 	}, nil
 }
