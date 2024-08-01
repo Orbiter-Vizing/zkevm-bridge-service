@@ -49,6 +49,7 @@ type Deposit struct {
 	NetworkID          uint
 	TxHash             common.Hash
 	Metadata           []byte
+	TimeAt             time.Time
 	// it is only used for the bridge service
 	ReadyForClaim bool
 }

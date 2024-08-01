@@ -230,6 +230,7 @@ func (s *bridgeService) GetBridges(ctx context.Context, req *pb.GetBridgesReques
 				ClaimTxHash:   claimTxHash,
 				Metadata:      "0x" + hex.EncodeToString(deposit.Metadata),
 				ReadyForClaim: deposit.ReadyForClaim,
+				TimeAt:        uint64(deposit.TimeAt.Unix()),
 			},
 		)
 	}
