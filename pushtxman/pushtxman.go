@@ -220,7 +220,7 @@ func (tm *PushTxManager) scanClaimTxs(ctx context.Context) error {
 		}
 		claim := &etherman.Claim{
 			TxHash:             common.HexToHash(targetHash),
-			OriginalNetwork:    uint(origNetID),
+			OriginalNetwork:    convertChainID(uint(origNetID)),
 			OriginalAddress:    mTx.OriginalAddress,
 			DestinationAddress: mTx.OriginalAddress,
 			Amount:             mTx.Amount,
@@ -286,7 +286,7 @@ func (tm *PushTxManager) claimTxs(ctx context.Context, claim *etherman.Claim) er
 		}
 		return err
 	}
-	err = tm.storage.UpdatePushDepositsStatus(ctx, claim.OriginalNetwork, claim.NetworkID, claim.OriginalAddress.Hex(), claim.Index, dbTx)
+	err = tm.storage.UpdatePushDepositsStatus(ctx, convertChainID(claim.OriginalNetwork), convertChainID(claim.NetworkID), claim.OriginalAddress.Hex(), claim.Index, dbTx)
 	if err != nil {
 		log.Infof("[pushTxManager %s] update push deposit status err: %v", tm.l2Name, err)
 		rollbackErr := tm.storage.Rollback(ctx, dbTx)
