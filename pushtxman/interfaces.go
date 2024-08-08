@@ -27,6 +27,7 @@ type storageInterface interface {
 	UpdatePushDepositsStatus(context.Context, uint, uint, string, int, pgx.Tx) error
 	GetMinDepositCount(ctx context.Context, networkID uint, dbTx pgx.Tx) (int, error)
 	DelPushDeposit(ctx context.Context, depositID uint64, dbTx pgx.Tx) error
+	ExistPushClaim(ctx context.Context, networkID uint, index int, dbTx pgx.Tx) (bool, error)
 }
 
 type bridgeServiceInterface interface {

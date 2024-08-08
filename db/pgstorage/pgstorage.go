@@ -662,3 +662,13 @@ func (p *PostgresStorage) ExistPushDeposit(ctx context.Context, networkID uint, 
 	}
 	return id > 0, err
 }
+
+func (p *PostgresStorage) ExistPushClaim(ctx context.Context, networkID uint, index int, dbTx pgx.Tx) (bool, error) {
+	const existSQL = "SELECT block_id FROM sync.claim WHERE network_id = $1 and index = $2"
+	var id uint64
+	err := p.getExecQuerier(dbTx).QueryRow(ctx, existSQL, networkID, index).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	return id > 0, err
+}

@@ -277,14 +277,25 @@ func (tm *PushTxManager) claimTxs(ctx context.Context, claim *etherman.Claim) er
 		return err
 	}
 	claim.BlockID = blockID
-	err = tm.storage.AddClaim(ctx, claim, dbTx)
+	isExist, err := tm.storage.ExistPushClaim(ctx, convertChainID(claim.NetworkID), claim.Index, dbTx)
 	if err != nil {
-		log.Infof("[pushTxManager %s] add claim：%s err: %v", tm.l2Name, claim.TxHash, err)
+		log.Infof("[pushTxManager %s] claimTx: %s, exist PushClaim err: %v", tm.l2Name, claim.TxHash, err)
 		rollbackErr := tm.storage.Rollback(ctx, dbTx)
 		if rollbackErr != nil {
 			log.Errorf("[pushTxManager %s] error rolling back state. RollbackErr: %s, err: %v", tm.l2Name, rollbackErr.Error(), err)
 		}
 		return err
+	}
+	if !isExist {
+		err = tm.storage.AddClaim(ctx, claim, dbTx)
+		if err != nil {
+			log.Infof("[pushTxManager %s] add claim：%s err: %v", tm.l2Name, claim.TxHash, err)
+			rollbackErr := tm.storage.Rollback(ctx, dbTx)
+			if rollbackErr != nil {
+				log.Errorf("[pushTxManager %s] error rolling back state. RollbackErr: %s, err: %v", tm.l2Name, rollbackErr.Error(), err)
+			}
+			return err
+		}
 	}
 	err = tm.storage.UpdatePushDepositsStatus(ctx, convertChainID(claim.OriginalNetwork), convertChainID(claim.NetworkID), claim.OriginalAddress.Hex(), claim.Index, dbTx)
 	if err != nil {
