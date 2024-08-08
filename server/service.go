@@ -367,7 +367,7 @@ func (s *bridgeService) PushBridge(ctx context.Context, req *pb.PushBridgeReques
 			return &pb.PushBridgeResponse{ Status: -6 }, nil
 		}
 	}
-
+	log.Infof("PushBridge req: %+v", req)
 	deposit := &etherman.Deposit{
 		OriginalNetwork: uint(req.OrigNet),
 		OriginalAddress: common.HexToAddress(req.OrigAddr),

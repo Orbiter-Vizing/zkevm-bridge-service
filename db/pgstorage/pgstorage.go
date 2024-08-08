@@ -2,6 +2,7 @@ package pgstorage
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"io"
@@ -626,9 +627,17 @@ func (p *PostgresStorage) GetPendingPushTxsStatus(ctx context.Context, chainID u
 
 func (p *PostgresStorage) GetMinDepositCount(ctx context.Context, networkID uint, dbTx pgx.Tx) (int, error) {
 	const getDepositCountSQL = "SELECT min(deposit_cnt) FROM sync.deposit WHERE dest_net = $1"
-	var minIndex int
+	var minIndex sql.NullInt64
 	err := p.getExecQuerier(dbTx).QueryRow(ctx, getDepositCountSQL, networkID).Scan(&minIndex)
-	return minIndex, err
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, nil
+	} else if err != nil {
+		return 0, err
+	}
+	if minIndex.Valid {
+		return int(minIndex.Int64), nil
+	}
+	return 0, nil
 }
 
 func (p *PostgresStorage) UpdatePushDepositsStatus(ctx context.Context, origNetID, destNetID uint, destAddr string, index int, dbTx pgx.Tx) error {

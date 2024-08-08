@@ -2,10 +2,8 @@ package pushtxman
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/log"
-	"github.com/jackc/pgx/v4"
 	"sync"
 	"time"
 )
@@ -123,9 +121,7 @@ func (tm *DepositManager) GetDepositCnt(ctx context.Context, networkID uint) (in
 		return minIndex, nil
 	}
 	minIndex, err = tm.storage.GetMinDepositCount(ctx, networkID, nil)
-	if errors.Is(err, pgx.ErrNoRows) {
-		minIndex = 0
-	} else if err != nil {
+	if err != nil {
 		return minIndex, err
 	}
 	minIndex -= 1
