@@ -68,6 +68,7 @@ func convertChainID(chainID uint) uint {
 // send then to the blockchain and keep monitoring them until they
 // get mined
 func (tm *PushTxManager) Start() {
+	time.Sleep(time.Minute)
 	ticker := time.NewTicker(tm.cfg.FrequencyToMonitorTxs.Duration)
 	for {
 		select {
