@@ -3,6 +3,7 @@ package pushtxman
 import "time"
 
 const TX_STATUS = 2
+const OP_FAILED = 97
 const OP_SUCCESS = 99
 
 type TxStatus struct {

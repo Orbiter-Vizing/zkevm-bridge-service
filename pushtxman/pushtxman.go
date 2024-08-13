@@ -197,9 +197,9 @@ func (tm *PushTxManager) scanClaimTxs(ctx context.Context) error {
 		if err != nil {
 			continue
 		}
-		log.Debugf("%s deposit ——> claim tx result: %+v", tm.l2Name, retRes.Result)
-		if retRes.Result.Status != TX_STATUS {
-			log.Debugf("%s claim tx add invalid deposit", tm.l2Name)
+		//log.Debugf("%s deposit ——> claim tx result: %+v", tm.l2Name, retRes.Result)
+		if retRes.Result.Status != TX_STATUS || retRes.Result.OpStatus == OP_FAILED {
+			log.Debugf("%s claim tx add invalid deposit, claim tx result: %+v", tm.l2Name, retRes.Result)
 			tm.depositMgr.AddInvalidDeposit(ctx, mTx.Id)
 			continue
 		}
