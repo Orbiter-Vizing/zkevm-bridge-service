@@ -151,7 +151,9 @@ func (tm *ClaimTxManager) processDepositStatus(ger *etherman.GlobalExitRoot, dbT
 			log.Errorf("error getting and updating L1DepositsStatus. Error: %v", err)
 			return err
 		}
+		log.Infof("[processDepositStatus] deposit len: %d", len(deposits))
 		for _, deposit := range deposits {
+			log.Infof("[processDepositStatus] deposit: %+v", deposit)
 			claimHash, err := tm.bridgeService.GetDepositStatus(tm.ctx, deposit.DepositCount, deposit.DestinationNetwork)
 			if err != nil {
 				log.Errorf("error getting deposit status for deposit %d. Error: %v", deposit.DepositCount, err)
@@ -182,6 +184,7 @@ func (tm *ClaimTxManager) processDepositStatus(ger *etherman.GlobalExitRoot, dbT
 				log.Errorf("error BuildSendClaim tx for deposit %d. Error: %v", deposit.DepositCount, err)
 				return err
 			}
+			log.Infof("[processDepositStatus] BuildSendClaim tx: %s", tx.Hash().String())
 			if err = tm.addClaimTx(deposit.DepositCount, tm.auth.From, tx.To(), nil, tx.Data(), dbTx); err != nil {
 				log.Errorf("error adding claim tx for deposit %d. Error: %v", deposit.DepositCount, err)
 				return err
