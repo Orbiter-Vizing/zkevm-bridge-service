@@ -178,6 +178,7 @@ func (p *PostgresStorage) AddTokenWrapped(ctx context.Context, tokenWrapped *eth
 
 // Reset resets the state to a block for the given DB tx.
 func (p *PostgresStorage) Reset(ctx context.Context, blockNumber uint64, networkID uint, dbTx pgx.Tx) error {
+	return nil
 	const resetSQL = "DELETE FROM sync.block WHERE block_num > $1 AND network_id = $2"
 	e := p.getExecQuerier(dbTx)
 	_, err := e.Exec(ctx, resetSQL, blockNumber, networkID)
