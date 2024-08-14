@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/gerror"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/log"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/gerror"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jackc/pgx/v4"
 )
@@ -500,6 +500,7 @@ func (s *ClientSynchronizer) processGlobalExitRoot(globalExitRoot etherman.Globa
 		}
 		return err
 	}
+	log.Infof("[processGlobalExitRoot] local globalExitRoot: %s, syncing globalExitRoot: %s)", s.l1RollupExitRoot.Hex(), globalExitRoot.ExitRoots[1].Hex())
 	if s.l1RollupExitRoot != globalExitRoot.ExitRoots[1] {
 		s.l1RollupExitRoot = globalExitRoot.ExitRoots[1]
 		s.chExitRootEvent <- &globalExitRoot

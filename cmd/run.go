@@ -93,7 +93,7 @@ func start(ctx *cli.Context) error {
 
 	log.Debug("trusted sequencer URL ", c.Etherman.L2URLs[0])
 	zkEVMClient := client.NewClient(c.Etherman.L2URLs[0])
-	chExitRootEvent := make(chan *etherman.GlobalExitRoot)
+	chExitRootEvent := make(chan *etherman.GlobalExitRoot, 10000)
 	chSynced := make(chan uint)
 	go runSynchronizer(c.NetworkConfig.GenBlockNumber, bridgeController, l1Etherman, c.Synchronizer, storage, zkEVMClient, chExitRootEvent, chSynced)
 	for _, client := range l2Ethermans {
