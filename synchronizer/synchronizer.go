@@ -200,6 +200,7 @@ func (s *ClientSynchronizer) syncTrustedState() error {
 		return err
 	}
 	if isUpdated {
+		log.Infof("[syncTrustedState] updated rollupExitRoot: %s", ger.ExitRoots[1].Hex())
 		s.chExitRootEvent <- ger
 	}
 	return nil
