@@ -271,7 +271,7 @@ func (s *bridgeService) GetBridges(ctx context.Context, req *pb.GetBridgesReques
 					LeafType:      0,
 					OrigNet:       row.OrigNet(),
 					OrigAddr:      row.SourceAddress,
-					Amount:        row.SourceAmount,
+					Amount:        row.Amount(),
 					DestNet:       row.DestNet(),
 					DestAddr:      row.TargetAddress,
 					BlockNum:      999999,

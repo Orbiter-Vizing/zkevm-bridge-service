@@ -1,6 +1,7 @@
 package server
 
 import (
+	"math/big"
 	"strconv"
 	"strings"
 	"time"
@@ -69,4 +70,13 @@ func (r Row) ReadyForClaim() bool {
 
 func (r Row) TimeAt() uint64 {
 	return uint64(r.SourceTime.Unix())
+}
+
+func (r Row) Amount() string {
+	amtF, _ := new(big.Float).SetString(r.SourceAmount)
+	multiplier := new(big.Float).SetFloat64(1e18)
+	result := new(big.Float).Mul(amtF, multiplier)
+	intResult := new(big.Int)
+	result.Int(intResult)
+	return intResult.String()
 }
