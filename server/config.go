@@ -17,7 +17,8 @@ type Config struct {
 	// Version is the version of the bridge service
 	BridgeVersion string `mapstructure:"BridgeVersion"`
 	// DB is the database config
-	DB                db.Config `mapstructure:"DB"`
-	BridgeUIHost      string    `mapstructure:"BridgeUIHost"`
-	EnableUIHostMatch bool      `mapstructure:"EnableUIHostMatch"`
+	DB                  db.Config `mapstructure:"DB"`
+	BridgeUIHost        string    `mapstructure:"BridgeUIHost"`
+	EnableUIHostMatch   bool      `mapstructure:"EnableUIHostMatch"`
+	FullChainHistoryAPI string    `mapstructure:"FullChainHistoryAPI"`
 }

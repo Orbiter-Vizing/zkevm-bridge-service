@@ -188,7 +188,7 @@ func (tm *PushTxManager) scanClaimTxs(ctx context.Context) error {
 			continue
 		}
 		r := utils.NewHTTPCli()
-		ret, err := r.Get(tm.cfg.FullChainAPI + mTx.TxHash.String())
+		ret, err := r.Get(tm.cfg.FullChainStatusAPI + mTx.TxHash.String())
 		if err != nil {
 			continue
 		}

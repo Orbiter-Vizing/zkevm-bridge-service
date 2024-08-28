@@ -6,8 +6,12 @@ import (
 	"fmt"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/log"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/pushtxman"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
 	"google.golang.org/grpc/metadata"
 	"math/big"
+	"sort"
+	"strings"
+	"sync"
 
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl/pb"
@@ -19,6 +23,7 @@ import (
 )
 
 type bridgeService struct {
+	enablePushTm     bool
 	storage          bridgeServiceStorage
 	depositMgr       *pushtxman.DepositManager
 	cfg              Config
@@ -34,7 +39,7 @@ type bridgeService struct {
 
 // NewBridgeService creates new bridge service.
 func NewBridgeService(cfg Config, height uint8, networks []uint, chPush map[uint]chan *etherman.Deposit,
-	storage interface{}, depositMgr *pushtxman.DepositManager) *bridgeService {
+	storage interface{}, depositMgr *pushtxman.DepositManager, enablePushTm bool) *bridgeService {
 	var networkIDs = make(map[uint]uint8)
 	for i, network := range networks {
 		networkIDs[network] = uint8(i)
@@ -54,6 +59,7 @@ func NewBridgeService(cfg Config, height uint8, networks []uint, chPush map[uint
 		chPush:           chPush,
 		depositMgr:       depositMgr,
 		cfg:              cfg,
+		enablePushTm:     enablePushTm,
 	}
 }
 
@@ -200,6 +206,26 @@ func (s *bridgeService) GetBridges(ctx context.Context, req *pb.GetBridgesReques
 	if limit > s.maxPageLimit {
 		limit = s.maxPageLimit
 	}
+	l2List := &HistoryRes{}
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if s.enablePushTm || s.cfg.FullChainHistoryAPI == "" {
+			return
+		}
+		r := utils.NewHTTPCli()
+		ret, err := r.Get(s.cfg.FullChainHistoryAPI + "?address=" + strings.ToLower(req.DestAddr))
+		if err != nil {
+			log.Infof("request FullChainHistoryAPI error: %s", err.Error())
+			return
+		}
+		err = ret.Parse(l2List)
+		if err != nil {
+			log.Infof("FullChainHistoryAPI parse data error: %s", err.Error())
+			return
+		}
+	}()
 	totalCount, err := s.storage.GetDepositCount(ctx, req.DestAddr, nil)
 	if err != nil {
 		return nil, err
@@ -233,6 +259,34 @@ func (s *bridgeService) GetBridges(ctx context.Context, req *pb.GetBridgesReques
 				TimeAt:        uint64(deposit.TimeAt.Unix()),
 			},
 		)
+	}
+
+	wg.Wait()
+	if !s.enablePushTm {
+		totalCount += l2List.Result.Count
+		for _, row := range l2List.Result.Rows {
+			pbDeposits = append(
+				pbDeposits, &pb.Deposit{
+					LeafType:      0,
+					OrigNet:       row.SourceChain,
+					OrigAddr:      row.SourceAddress,
+					Amount:        row.SourceAmount,
+					DestNet:       row.TargetChain,
+					DestAddr:      row.TargetAddress,
+					BlockNum:      999999,
+					DepositCnt:    0,
+					NetworkId:     row.SourceChain,
+					TxHash:        row.TxHash(),
+					ClaimTxHash:   row.ClaimTxHash(),
+					Metadata:      "0x",
+					ReadyForClaim: row.ReadyForClaim(),
+					TimeAt:        row.TimeAt(),
+				},
+			)
+		}
+		sort.Slice(pbDeposits, func(i, j int) bool {
+			return pbDeposits[i].TimeAt > pbDeposits[j].TimeAt
+		})
 	}
 
 	return &pb.GetBridgesResponse{

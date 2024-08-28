@@ -84,7 +84,7 @@ func start(ctx *cli.Context) error {
 	}
 	chPush := make(map[uint]chan *etherman.Deposit)
 	depositMgr := pushtxman.NewDepositManager(c.PushTxManager, storage)
-	bridgeService := server.NewBridgeService(c.BridgeServer, c.BridgeController.Height, networkIDs, chPush, apiStorage, depositMgr)
+	bridgeService := server.NewBridgeService(c.BridgeServer, c.BridgeController.Height, networkIDs, chPush, apiStorage, depositMgr, c.PushTxManager.Enabled)
 	err = server.RunServer(c.BridgeServer, bridgeService)
 	if err != nil {
 		log.Error(err)
@@ -129,7 +129,7 @@ func start(ctx *cli.Context) error {
 
 	if c.PushTxManager.Enabled {
 		go depositMgr.Start()
-		c.PushTxManager.FullChainAPI = strings.Trim(c.PushTxManager.FullChainAPI, "/\\") + "/"
+		c.PushTxManager.FullChainStatusAPI = strings.Trim(c.PushTxManager.FullChainStatusAPI, "/\\") + "/"
 		chClaim := make(map[uint]chan *etherman.Claim)
 		for i := 0; i < len(c.PushTxManager.NodeRpcs); i++ {
 			pushTxManager, err := pushtxman.NewPushTxManager(c.PushTxManager, i, chPush, chClaim, depositMgr, storage)

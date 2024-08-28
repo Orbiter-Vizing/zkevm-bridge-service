@@ -7,7 +7,7 @@ type Config struct {
 	//Enabled whether to enable this module
 	Enabled               bool           `mapstructure:"Enabled"`
 	FrequencyToMonitorTxs types.Duration `mapstructure:"FrequencyToMonitorTxs"`
-	FullChainAPI          string         `mapstructure:"FullChainAPI"`
+	FullChainStatusAPI    string         `mapstructure:"FullChainStatusAPI"`
 	NodeRpcs              []NodeRpc      `mapstructure:"NodeRpcs"`
 }
 
