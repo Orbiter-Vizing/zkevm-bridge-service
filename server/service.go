@@ -215,7 +215,7 @@ func (s *bridgeService) GetBridges(ctx context.Context, req *pb.GetBridgesReques
 			return
 		}
 		r := utils.NewHTTPCli()
-		url := fmt.Sprintf("%s?address=%s&offset=%d&limit=%d", s.cfg.FullChainHistoryAPI, strings.ToLower(req.DestAddr), req.Offset, limit)
+		url := fmt.Sprintf("%s?address=%s&offset=%d&limit=%d&mode=strict", s.cfg.FullChainHistoryAPI, strings.ToLower(req.DestAddr), req.Offset, limit)
 		ret, err := r.Get(url)
 		if err != nil {
 			log.Infof("request FullChainHistoryAPI error: %s", err.Error())
