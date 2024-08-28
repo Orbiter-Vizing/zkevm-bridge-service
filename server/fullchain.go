@@ -1,6 +1,7 @@
 package server
 
 import (
+	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
 	"math/big"
 	"strconv"
 	"strings"
@@ -38,11 +39,23 @@ type Row struct {
 
 func (r Row) OrigNet() uint32 {
 	chainID, _ := strconv.Atoi(r.SourceChain)
+	if chainID == etherman.VIZING_TESTNET || chainID == etherman.VIZING_MAINNET {
+		chainID = 1
+	}
+	if chainID == etherman.ETHEREUM_TESTNET || chainID == etherman.ETHEREUM_MAINNET {
+		chainID = 0
+	}
 	return uint32(chainID)
 }
 
 func (r Row) DestNet() uint32 {
 	chainID, _ := strconv.Atoi(r.TargetChain)
+	if chainID == etherman.VIZING_TESTNET || chainID == etherman.VIZING_MAINNET {
+		chainID = 1
+	}
+	if chainID == etherman.ETHEREUM_TESTNET || chainID == etherman.ETHEREUM_MAINNET {
+		chainID = 0
+	}
 	return uint32(chainID)
 }
 
