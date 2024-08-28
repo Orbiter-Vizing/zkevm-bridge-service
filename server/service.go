@@ -215,7 +215,8 @@ func (s *bridgeService) GetBridges(ctx context.Context, req *pb.GetBridgesReques
 			return
 		}
 		r := utils.NewHTTPCli()
-		ret, err := r.Get(s.cfg.FullChainHistoryAPI + "?address=" + strings.ToLower(req.DestAddr))
+		url := fmt.Sprintf("%s?address=%s&offset=%d&limit=%d", s.cfg.FullChainHistoryAPI, strings.ToLower(req.DestAddr), req.Offset, limit)
+		ret, err := r.Get(url)
 		if err != nil {
 			log.Infof("request FullChainHistoryAPI error: %s", err.Error())
 			return
@@ -268,14 +269,14 @@ func (s *bridgeService) GetBridges(ctx context.Context, req *pb.GetBridgesReques
 			pbDeposits = append(
 				pbDeposits, &pb.Deposit{
 					LeafType:      0,
-					OrigNet:       row.SourceChain,
+					OrigNet:       row.OrigNet(),
 					OrigAddr:      row.SourceAddress,
 					Amount:        row.SourceAmount,
-					DestNet:       row.TargetChain,
+					DestNet:       row.DestNet(),
 					DestAddr:      row.TargetAddress,
 					BlockNum:      999999,
 					DepositCnt:    0,
-					NetworkId:     row.SourceChain,
+					NetworkId:     row.OrigNet(),
 					TxHash:        row.TxHash(),
 					ClaimTxHash:   row.ClaimTxHash(),
 					Metadata:      "0x",

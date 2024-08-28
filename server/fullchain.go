@@ -1,6 +1,7 @@
 package server
 
 import (
+	"strconv"
 	"strings"
 	"time"
 )
@@ -21,8 +22,8 @@ type Result struct {
 type Row struct {
 	SourceId      string    `json:"sourceId"`
 	TargetId      string    `json:"targetId"`
-	SourceChain   uint32    `json:"sourceChain"`
-	TargetChain   uint32    `json:"targetChain"`
+	SourceChain   string    `json:"sourceChain"`
+	TargetChain   string    `json:"targetChain"`
 	SourceAmount  string    `json:"sourceAmount"`
 	SourceMaker   string    `json:"sourceMaker"`
 	SourceAddress string    `json:"sourceAddress"`
@@ -32,6 +33,16 @@ type Row struct {
 	Status        int       `json:"status"`
 	SourceTime    time.Time `json:"sourceTime"`
 	TargetTime    time.Time `json:"targetTime"`
+}
+
+func (r Row) OrigNet() uint32 {
+	chainID, _ := strconv.Atoi(r.SourceChain)
+	return uint32(chainID)
+}
+
+func (r Row) DestNet() uint32 {
+	chainID, _ := strconv.Atoi(r.TargetChain)
+	return uint32(chainID)
 }
 
 func (r Row) TxHash() string {
