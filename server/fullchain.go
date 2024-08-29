@@ -84,10 +84,8 @@ func (r Row) TimeAt() uint64 {
 }
 
 func (r Row) Amount() string {
-	amtF, _ := new(big.Float).SetString(r.SourceAmount)
-	multiplier := new(big.Float).SetFloat64(1e18)
-	result := new(big.Float).Mul(amtF, multiplier)
-	intResult := new(big.Int)
-	result.Int(intResult)
-	return intResult.String()
+	amtF, _ := new(big.Rat).SetString(r.SourceAmount)
+	multiplier := new(big.Rat).SetFloat64(1e18)
+	result := new(big.Rat).Mul(amtF, multiplier)
+	return result.Num().String()
 }
