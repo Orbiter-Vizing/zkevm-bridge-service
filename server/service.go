@@ -409,6 +409,9 @@ func (s *bridgeService) GetTokenWrapped(ctx context.Context, req *pb.GetTokenWra
 }
 
 func (s *bridgeService) PushBridge(ctx context.Context, req *pb.PushBridgeRequest) (*pb.PushBridgeResponse, error) {
+	if !s.enablePushTm {
+		return &pb.PushBridgeResponse{ Status: -7 }, nil
+	}
 	if s.cfg.EnableUIHostMatch {
 		isMatch := false
 		if md, ok := metadata.FromIncomingContext(ctx); ok {
